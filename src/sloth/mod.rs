@@ -1,3 +1,3 @@
-pub mod lexer;
+pub mod syntax;
 
-pub use self::lexer::*;
+pub use self::syntax::*;
