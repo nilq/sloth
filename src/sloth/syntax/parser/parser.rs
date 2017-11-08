@@ -184,6 +184,7 @@ impl Parser {
 
     fn body(&mut self) -> ParserResult<Expression> {
         if self.traveler.current_content() == "\n" {
+            self.traveler.next();
             self.block()
         } else {
             self.expression()
@@ -265,7 +266,7 @@ impl Parser {
 
         self.traveler.expect_content("|")?;
         self.traveler.next();
-                
+
         let body = Rc::new(self.body()?);
         
         self.skip_whitespace()?;

@@ -7,9 +7,12 @@ use sloth::*;
 fn main() {
     let test = r#"
 fib: (i32) = {
-    |0, 0| 0
-    |1,  | 1
-    |n,  | (fib n - 1) + fib n - 2
+    |0| 0
+    |1| 1
+    |n|
+        (fib n - 1) + fib n - 2
+    |true, n|
+        1 + 2
 }
     "#;
 
