@@ -14,6 +14,8 @@ pub enum Expression {
     Call(Call),
     Array(Vec<Rc<Expression>>),
     Index(Index),
+    Function(Function),
+    Arm(Arm),
     EOF,
 }
 
@@ -34,6 +36,17 @@ pub struct Call {
 pub struct Index {
     pub id:    Rc<Expression>,
     pub index: Rc<Expression>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Function {
+    pub arms: Vec<Rc<Expression>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Arm {
+    pub params: Vec<Rc<Expression>>,
+    pub body:   Rc<Expression>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -105,17 +118,13 @@ pub enum Type {
     Char,
     Str,
     Bool,
-    Any,
+    Undefined,
 }
 
 #[allow(unused)]
 impl Type {
     pub fn compare(&self, other: &Type) -> bool {
-        if self == &Type::Any || other == &Type::Any {
-            true
-        } else {
-            self == other
-        }
+        self == other
     }
 
     pub fn from(v: &Token) -> Option<Type> {
@@ -136,7 +145,6 @@ impl Type {
                 "char" => Some(Type::Char),
                 "str"  => Some(Type::Str),
                 "bool" => Some(Type::Bool),
-                "any"  => Some(Type::Any),
                 _      => None,
             },
             

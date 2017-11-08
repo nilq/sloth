@@ -9,7 +9,8 @@ pub fn lexer(data: &mut Chars) -> Lexer {
     let tokenizer = Tokenizer::new(data);
     let mut lexer = Lexer::new(tokenizer);
 
-    let eol = vec!["\n"].iter().map(|&x| x.to_string()).collect();
+    let eol   = vec!["\n"].iter().map(|&x| x.to_string()).collect();
+    let space = vec![" "].iter().map(|&x| x.to_string()).collect();
 
     let symbols = vec![
         "(",
@@ -61,7 +62,6 @@ pub fn lexer(data: &mut Chars) -> Lexer {
         "u128",
         "char",
         "str",
-        "any",
         "bool",
         "mut",
     ].iter().map(|&x| x.to_string()).collect();
@@ -77,6 +77,7 @@ pub fn lexer(data: &mut Chars) -> Lexer {
     ].iter().map(|&x| x.to_string()).collect();
 
     let matcher_eol            = ConstantMatcher::new(TokenType::EOL, eol);
+    let matcher_space          = ConstantMatcher::new(TokenType::Whitespace, space);
     let matcher_indent         = ConstantMatcher::new(TokenType::Indent, indent);
     let matcher_keywords       = KeyMatcher::new(TokenType::Keyword, keywords);
     let matcher_operator       = ConstantMatcher::new(TokenType::Operator, operators);
@@ -90,6 +91,7 @@ pub fn lexer(data: &mut Chars) -> Lexer {
     let matcher_string_literal = StringLiteralMatcher {};
 
     lexer.matchers_mut().push(Rc::new(matcher_eol));
+    lexer.matchers_mut().push(Rc::new(matcher_space));
     lexer.matchers_mut().push(Rc::new(matcher_indent));
     lexer.matchers_mut().push(Rc::new(matcher_whitespace));
     lexer.matchers_mut().push(Rc::new(matcher_keywords));
