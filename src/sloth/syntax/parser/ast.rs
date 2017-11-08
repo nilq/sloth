@@ -1,18 +1,19 @@
 use std::rc::Rc;
+use std::collections::HashMap;
 
 use super::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     Block(Vec<Statement>),
-    Number(f64),
+    Int(i64),
+    Float(f64),
     Bool(bool),
     Str(Rc<String>),
     Char(char),
     Identifier(Rc<String>),
     Operation(Operation),
     Call(Call),
-    Array(Vec<Rc<Expression>>),
     Index(Index),
     Function(Function),
     Arm(Arm),
@@ -101,8 +102,8 @@ impl Operand {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Mut(Option<Rc<Type>>),
-    Array(Rc<Type>, Option<Expression>),
-    Function(Vec<Rc<Type>>),
+    Signature(Vec<Rc<Type>>),
+    Function(Vec<(Vec<Rc<Type>>, Rc<Type>)>),
     Identifier(Rc<String>),
     I08,
     I16,
@@ -119,6 +120,8 @@ pub enum Type {
     Char,
     Str,
     Bool,
+    Int,
+    Float,
     Undefined,
 }
 

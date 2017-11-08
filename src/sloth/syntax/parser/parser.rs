@@ -57,29 +57,6 @@ impl Parser {
 
         Ok(expr)
     }
-
-    fn array_type(&mut self) -> ParserResult<Type> {
-        self.traveler.next();
-
-        let t = Rc::new(Type::from(&self.traveler.current()).unwrap_or(Type::Undefined));
-        self.traveler.next();
-
-        if self.traveler.current_content() == ";" {
-            self.traveler.next();
-
-            let len = self.term()?;
-
-            self.traveler.expect_content("]")?;
-            self.traveler.next();
-
-            Ok(Type::Array(t, Some(len)))
-        } else {
-            self.traveler.expect_content("]")?;
-            self.traveler.next();
-
-            Ok(Type::Array(t, None))
-        }
-    }
     
     fn function_type(&mut self) -> ParserResult<Type> {
         self.traveler.next();
@@ -96,7 +73,7 @@ impl Parser {
         
         self.traveler.next();
 
-        Ok(Type::Function(types))
+        Ok(Type::Signature(types))
     }
 
     pub fn try_type(&mut self) -> ParserResult<Type> {
@@ -104,9 +81,7 @@ impl Parser {
             self.traveler.next();
 
             let t: Option<Rc<Type>>;
-            if self.traveler.current_content() == "[" {
-                t = Some(Rc::new(self.array_type()?));
-            } else if self.traveler.current_content() == "(" {
+            if self.traveler.current_content() == "(" {
                 t = Some(Rc::new(self.function_type()?));
             } else if let Some(tt) = Type::from(&self.traveler.current()) {
                 self.traveler.next();
@@ -120,8 +95,6 @@ impl Parser {
         } else if let Some(t) = Type::from(&self.traveler.current()) {
             self.traveler.next();
             Ok(t)
-        } else if self.traveler.current_content() == "[" {
-            Ok(self.array_type()?)
         } else if self.traveler.current_content() == "(" {
             Ok(self.function_type()?)
         } else {
@@ -208,46 +181,6 @@ impl Parser {
             )
         )
     }
-
-    fn array(&mut self) -> ParserResult<Expression> {
-        self.traveler.next();
-
-        let mut content = Vec::new();
-
-        let mut acc = 0;
-
-        while self.traveler.current_content() != "]" {
-            if self.traveler.current_content() == "," {
-                self.traveler.next();
-                self.skip_whitespace()?;
-
-                if self.traveler.current_content() == "}" {
-                    break
-                }
-
-                content.push(Rc::new(self.expression()?));
-
-            } else if acc == 0 {
-                content.push(Rc::new(self.expression()?));
-            } else {
-                if self.traveler.current_content() != "," {
-                    self.skip_whitespace()?;
-                }
-                break
-            }
-
-            acc += 1
-        }
-
-        self.traveler.expect_content("]")?;
-        self.traveler.next();
-
-        if self.traveler.current_content() == "[" {
-            self.index(Rc::new(Expression::Array(content)))
-        } else {
-            Ok(Expression::Array(content))
-        }
-    }
     
     fn arm(&mut self) -> ParserResult<Expression> {
         self.traveler.expect_content("|")?;
@@ -276,15 +209,20 @@ impl Parser {
     
     fn function(&mut self) -> ParserResult<Expression> {
         self.traveler.next();
-        
+
         self.skip_whitespace()?;
-        
+
         let mut arms = Vec::new();
         
-        while self.traveler.current_content() != "}" {
-            arms.push(Rc::new(self.arm()?))
+        while self.traveler.current_content() != "}" {            
+            if self.traveler.current_content() == "|" {
+                arms.push(Rc::new(self.arm()?))
+            } else {
+                arms.push(Rc::new(self.expression()?));
+            }
         }
 
+        self.traveler.expect_content("}")?;
         self.traveler.next();
 
         Ok(Expression::Function(Function{arms}))
@@ -297,13 +235,13 @@ impl Parser {
 
         match self.traveler.current().token_type {
             TokenType::IntLiteral    => {
-                let a = Ok(Expression::Number(self.traveler.current_content().parse::<f64>().unwrap()));
+                let a = Ok(Expression::Int(self.traveler.current_content().parse::<i64>().unwrap()));
                 self.traveler.next();
                 a
             }
 
             TokenType::FloatLiteral  => {
-                let a = Ok(Expression::Number(self.traveler.current_content().parse::<f64>().unwrap()));
+                let a = Ok(Expression::Float(self.traveler.current_content().parse::<f64>().unwrap()));
                 self.traveler.next();
                 a
             }
@@ -359,7 +297,6 @@ impl Parser {
                         Ok(a)
                     }
                 }
-                "[" => self.array(),
                 "{" => self.function(),
                 _ => Err(ParserError::new_pos(self.traveler.current().position, &format!("unexpected symbol: {}", self.traveler.current_content()))),
             },

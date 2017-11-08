@@ -1,18 +1,22 @@
 extern crate colored;
 use colored::*;
 
+use std::rc::Rc;
+
 mod sloth;
 use sloth::*;
 
 fn main() {
     let test = r#"
-fib: (i32) = {
-    |0| 0
-    |1| 1
-    |n|
-        (fib n - 1) + fib n - 2
-    |true, n|
-        1 + 2
+if := {
+  |true, body| body
+}
+
+range := {
+  |a, b, body| if a < b, {
+  	body
+  	range a + 1, b, body
+  }
 }
     "#;
 
@@ -60,6 +64,18 @@ fib: (i32) = {
                 }
             },
         },
-        Ok(stuff) => println!("{:#?}", stuff),
+        Ok(stuff) => {
+            println!("{:#?}", stuff);
+            
+            let symtab  = Rc::new(SymTab::new_global());
+            let typetab = Rc::new(TypeTab::new_global());
+            
+            let root = Expression::Block(stuff);
+
+            match root.visit(&symtab, &typetab) {
+                Err(err) => println!("{}", err),
+                _        => (),
+            }
+        }
     }
 }
