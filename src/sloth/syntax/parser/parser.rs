@@ -80,6 +80,24 @@ impl Parser {
             Ok(Type::Array(t, None))
         }
     }
+    
+    fn function_type(&mut self) -> ParserResult<Type> {
+        self.traveler.next();
+        
+        let mut types = Vec::new();
+        
+        while self.traveler.current_content() != ")" {
+            types.push(Rc::new(self.try_type()?));
+            
+            if self.traveler.current_content() == "|" {
+                self.traveler.next();
+            }
+        }
+        
+        self.traveler.next();
+
+        Ok(Type::Function(types))
+    }
 
     pub fn try_type(&mut self) -> ParserResult<Type> {
         if self.traveler.current_content() == "mut" {
@@ -88,6 +106,8 @@ impl Parser {
             let t: Option<Rc<Type>>;
             if self.traveler.current_content() == "[" {
                 t = Some(Rc::new(self.array_type()?));
+            } else if self.traveler.current_content() == "(" {
+                t = Some(Rc::new(self.function_type()?));
             } else if let Some(tt) = Type::from(&self.traveler.current()) {
                 self.traveler.next();
                 t = Some(Rc::new(tt));
@@ -102,6 +122,8 @@ impl Parser {
             Ok(t)
         } else if self.traveler.current_content() == "[" {
             Ok(self.array_type()?)
+        } else if self.traveler.current_content() == "(" {
+            Ok(self.function_type()?)
         } else {
             Err(ParserError::new_pos(self.traveler.current().position, &format!("expected type: {}", self.traveler.current_content())))
         }
