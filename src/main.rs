@@ -8,8 +8,8 @@ use sloth::*;
 
 fn main() {
     let test = r#"
-a := 10 + 10
-b
+a := "hey"
+a
     "#;
 
     let lexer = lexer(&mut test.chars());
@@ -114,7 +114,15 @@ b
                         }
                     },
                 },
-                _ => (),
+                _ => {
+                    let mut vm       = VirtualMachine::new();
+                    let mut compiler = Compiler::new(vm.clone());
+
+                    match compiler.compile(&root) {
+                        Ok(compiled) => vm.execute(&compiled),
+                        Err(err)     => println!("{}", err),
+                    }
+                },
             }
         }
     }
