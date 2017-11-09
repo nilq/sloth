@@ -18,7 +18,7 @@ pub enum TokenType {
     EOF,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct TokenPosition {
     pub line: usize,
     pub col:  usize,

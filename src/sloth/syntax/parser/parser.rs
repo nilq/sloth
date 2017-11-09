@@ -177,6 +177,7 @@ impl Parser {
                 Index {
                     id,
                     index,
+                    position: self.traveler.current().position
                 }
             )
         )
@@ -204,7 +205,7 @@ impl Parser {
         
         self.skip_whitespace()?;
         
-        Ok(Expression::Arm(Arm {params, body}))
+        Ok(Expression::Arm(Arm {params, body, position: self.traveler.current().position}))
     }
     
     fn function(&mut self) -> ParserResult<Expression> {
@@ -225,7 +226,7 @@ impl Parser {
         self.traveler.expect_content("}")?;
         self.traveler.next();
 
-        Ok(Expression::Function(Function{arms}))
+        Ok(Expression::Function(Function{arms, position: self.traveler.current().position}))
     }
 
     pub fn term(&mut self) -> ParserResult<Expression> {
@@ -265,7 +266,7 @@ impl Parser {
             }
 
             TokenType::Identifier => {
-                let a = Expression::Identifier(Rc::new(self.traveler.current_content().clone()));
+                let a = Expression::Identifier(Rc::new(self.traveler.current_content().clone()), self.traveler.current().position);
                 self.traveler.next();
 
                 if self.traveler.remaining() > 1 {
@@ -322,6 +323,7 @@ impl Parser {
                     Assignment {
                         left,
                         right,
+                        position: self.traveler.current().position
                     }
                 )
             )
@@ -349,10 +351,10 @@ impl Parser {
 
             let right = Some(Rc::new(self.expression()?));
 
-            Ok(Statement::Definition(Definition { t, name, right }))
+            Ok(Statement::Definition(Definition { t, name, right, position: self.traveler.current().position }))
 
         } else {
-            Ok(Statement::Definition(Definition { t, name, right: None }))
+            Ok(Statement::Definition(Definition { t, name, right: None, position: self.traveler.current().position }))
         }
     }
 
@@ -367,7 +369,7 @@ impl Parser {
                 _ => Ok(Statement::Expression(Rc::new(self.expression()?))),
             },
             TokenType::Identifier => {
-                let a = Expression::Identifier(Rc::new(self.traveler.current_content().clone()));
+                let a = Expression::Identifier(Rc::new(self.traveler.current_content().clone()), self.traveler.current().position);
                 self.traveler.next();
 
                 if self.traveler.current_content() == "=" {
@@ -428,6 +430,7 @@ impl Parser {
                 Call {
                     callee: Rc::new(caller),
                     args,
+                    position: self.traveler.current().position
                 }
             )
         )
@@ -469,7 +472,8 @@ impl Parser {
                             Operation {
                                 right: Rc::new(left),
                                 op:    op_stack.pop().unwrap().0,
-                                left:  Rc::new(right)
+                                left:  Rc::new(right),
+                                position: self.traveler.current().position
                             }
                         )
                     );
@@ -496,7 +500,8 @@ impl Parser {
                     Operation {
                         right: Rc::new(left),
                         op:    op_stack.pop().unwrap().0,
-                        left:  Rc::new(right)
+                        left:  Rc::new(right),
+                        position: self.traveler.current().position,
                     }
                 )
             );

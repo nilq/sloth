@@ -1,5 +1,4 @@
 use std::rc::Rc;
-use std::collections::HashMap;
 
 use super::*;
 
@@ -11,7 +10,7 @@ pub enum Expression {
     Bool(bool),
     Str(Rc<String>),
     Char(char),
-    Identifier(Rc<String>),
+    Identifier(Rc<String>, TokenPosition),
     Operation(Operation),
     Call(Call),
     Index(Index),
@@ -22,32 +21,37 @@ pub enum Expression {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Operation {
-    pub left:  Rc<Expression>,
-    pub op:    Operand,
-    pub right: Rc<Expression>,
+    pub left:     Rc<Expression>,
+    pub op:       Operand,
+    pub right:    Rc<Expression>,
+    pub position: TokenPosition,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Call {
     pub callee: Rc<Expression>,
     pub args:   Vec<Rc<Expression>>,
+    pub position: TokenPosition,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Index {
     pub id:    Rc<Expression>,
     pub index: Rc<Expression>,
+    pub position: TokenPosition,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Function {
     pub arms: Vec<Rc<Expression>>,
+    pub position: TokenPosition,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Arm {
     pub params: Vec<Rc<Expression>>,
     pub body:   Rc<Expression>,
+    pub position: TokenPosition,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -61,6 +65,7 @@ pub enum Statement {
 pub struct Assignment {
     pub left:  Rc<Expression>,
     pub right: Rc<Expression>,
+    pub position: TokenPosition,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -68,6 +73,7 @@ pub struct Definition {
     pub t:     Option<Type>,
     pub name:  Rc<Expression>,
     pub right: Option<Rc<Expression>>,
+    pub position: TokenPosition,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -122,6 +128,7 @@ pub enum Type {
     Bool,
     Int,
     Float,
+    Any,
     Undefined,
 }
 
