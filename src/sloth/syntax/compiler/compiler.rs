@@ -162,6 +162,12 @@ impl Compiler {
                 self.emit(OpCode::Pop);
 
                 Ok(())
+            },
+            
+            Statement::Print(ref e) => {
+                self.compile_expression(e)?;
+                self.emit(OpCode::Print);
+                Ok(())
             }
         }
     }
@@ -186,6 +192,29 @@ impl Compiler {
                 for s in statements {
                     self.compile_statement(s)?;
                 }
+                Ok(())
+            },
+            
+            Expression::Operation(ref operation) => {
+                self.compile_expression(&operation.left)?;
+                self.compile_expression(&operation.right)?;
+
+                match operation.op {
+                    Operand::Add     => self.emit(OpCode::Add),
+                    Operand::Sub     => self.emit(OpCode::Sub),
+                    Operand::Mul     => self.emit(OpCode::Mul),
+                    Operand::Div     => self.emit(OpCode::Div),
+                    Operand::Mod     => self.emit(OpCode::Rem),
+
+                    Operand::Lt      => self.emit(OpCode::Lt),
+                    Operand::Gt      => self.emit(OpCode::Gt),
+                    Operand::LtEqual => self.emit(OpCode::GtEq),
+                    Operand::GtEqual => self.emit(OpCode::GtEq),
+                    Operand::Equal   => self.emit(OpCode::Eq),
+                    Operand::NEqual  => self.emit(OpCode::NotEq),
+                    _                => (),
+                }
+                
                 Ok(())
             },
 

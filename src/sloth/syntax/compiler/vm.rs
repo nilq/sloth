@@ -40,6 +40,7 @@ pub enum OpCode {
     Pop,
     Return,
     Call(u8),
+    Print,
 }
 
 #[derive(Debug, Clone)]
@@ -84,9 +85,8 @@ impl VirtualMachine {
 
             let op = func.code[pc];
             
-            println!("    {:?}", self.value_stack);
             println!("{:?}", op);
-            
+
             match op {
                 OpCode::LoadConst(i)  => { self.value_stack.push(func.consts[i as usize]); },
                 OpCode::LoadLocal(i)  => { self.value_stack.push(locals[i as usize]); },
@@ -120,58 +120,119 @@ impl VirtualMachine {
                 OpCode::Pop => { self.value_stack.pop().unwrap(); },
                 
                 OpCode::Add => {
-                    match_binop!{(Value::Int(a), Value::Int(b)) => { Value::Int(a + b) }};
-                    match_binop!{(Value::Float(a), Value::Float(b)) => { Value::Float(a + b) }};
+                    let a = self.value_stack.pop().unwrap();
+                    let b = self.value_stack.pop().unwrap();
+
+                    let result = match (b, a) {
+                        (Value::Int(a), Value::Int(b))     => Value::Int(a + b),
+                        (Value::Float(a), Value::Float(b)) => Value::Float(a + b),
+                        (Value::Float(a), Value::Int(b))   => Value::Float(a + b as f64),
+                        _ => panic!("unexpected operand"),
+                    };
+
+                    self.value_stack.push(result)
                 }
 
                 OpCode::Sub => {
-                    match_binop!{(Value::Int(a), Value::Int(b)) => { Value::Int(a - b) }};
-                    match_binop!{(Value::Float(a), Value::Float(b)) => { Value::Float(a - b) }};
+                    let a = self.value_stack.pop().unwrap();
+                    let b = self.value_stack.pop().unwrap();
+
+                    let result = match (b, a) {
+                        (Value::Int(a), Value::Int(b))     => Value::Int(a - b),
+                        (Value::Float(a), Value::Float(b)) => Value::Float(a - b),
+                        (Value::Float(a), Value::Int(b))   => Value::Float(a - b as f64),
+                        _ => panic!("unexpected operand"),
+                    };
+
+                    self.value_stack.push(result)
                 }
-                
-                OpCode::Rem => match_binop!{
-                    (Value::Int(a), Value::Int(b)) => {
-                        assert!(b != 0);
-                        Value::Int(a % b)
-                    }
-                    
-                    (Value::Float(a), Value::Float(b)) => {
-                        assert!(b != 0.0);
-                        Value::Float(a % b)
-                    }
-                },
 
-                OpCode::Div => match_binop!{
-                    (Value::Int(a), Value::Int(b)) => {
-                        assert!(b != 0);
-                        Value::Int(a / b)
-                    }
-                    
-                    (Value::Float(a), Value::Float(b)) => {
-                        assert!(b != 0.);
-                        Value::Float(a / b)
-                    }
-                },
+                OpCode::Rem => {
+                    let a = self.value_stack.pop().unwrap();
+                    let b = self.value_stack.pop().unwrap();
 
-                OpCode::Lt   => match_binop!{
-                    (Value::Int(a), Value::Int(b))     => {Value::Bool(a < b)}
-                    (Value::Float(a), Value::Float(b)) => {Value::Bool(a < b)}
-                },
+                    let result = match (b, a) {
+                        (Value::Int(a), Value::Int(b))     => Value::Int(a % b),
+                        (Value::Float(a), Value::Float(b)) => Value::Float(a % b),
+                        _ => panic!("unexpected operand"),
+                    };
 
-                OpCode::Gt   => match_binop!{
-                    (Value::Int(a), Value::Int(b))     => {Value::Bool(a > b)}
-                    (Value::Float(a), Value::Float(b)) => {Value::Bool(a > b)}
-                },
+                    self.value_stack.push(result)
+                }
 
-                OpCode::LtEq => match_binop!{
-                    (Value::Int(a), Value::Int(b))     => {Value::Bool(a <= b)}
-                    (Value::Float(a), Value::Float(b)) => {Value::Bool(a <= b)}
-                },
+                OpCode::Div => {
+                    let a = self.value_stack.pop().unwrap();
+                    let b = self.value_stack.pop().unwrap();
 
-                OpCode::GtEq => match_binop!{
-                    (Value::Int(a), Value::Int(b))     => {Value::Bool(a >= b)}
-                    (Value::Float(a), Value::Float(b)) => {Value::Bool(a >= b)}
-                },
+                    let result = match (b, a) {
+                        (Value::Int(a), Value::Int(b))     => Value::Int(a / b),
+                        (Value::Float(a), Value::Float(b)) => Value::Float(a / b),
+                        (Value::Float(a), Value::Int(b))   => Value::Float(a / b as f64),
+                        _ => panic!("unexpected operand"),
+                    };
+
+                    self.value_stack.push(result)
+                }
+
+                OpCode::Lt   => {
+                    let a = self.value_stack.pop().unwrap();
+                    let b = self.value_stack.pop().unwrap();
+
+                    let result = match (b, a) {
+                        (Value::Int(a), Value::Int(b))     => Value::Bool(a < b),
+                        (Value::Float(a), Value::Float(b)) => Value::Bool(a < b),
+                        (Value::Float(a), Value::Int(b))   => Value::Bool(a < b as f64),
+                        (Value::Int(a), Value::Float(b))   => Value::Bool(a < b as i64),
+                        _ => panic!("unexpected operand"),
+                    };
+
+                    self.value_stack.push(result)
+                }
+
+                OpCode::Gt   => {
+                    let a = self.value_stack.pop().unwrap();
+                    let b = self.value_stack.pop().unwrap();
+
+                    let result = match (b, a) {
+                        (Value::Int(a), Value::Int(b))     => Value::Bool(a > b),
+                        (Value::Float(a), Value::Float(b)) => Value::Bool(a > b),
+                        (Value::Float(a), Value::Int(b))   => Value::Bool(a > b as f64),
+                        (Value::Int(a), Value::Float(b))   => Value::Bool(a > b as i64),
+                        _ => panic!("unexpected operand"),
+                    };
+
+                    self.value_stack.push(result)
+                }
+
+                OpCode::LtEq => {
+                    let a = self.value_stack.pop().unwrap();
+                    let b = self.value_stack.pop().unwrap();
+
+                    let result = match (b, a) {
+                        (Value::Int(a), Value::Int(b))     => Value::Bool(a <= b),
+                        (Value::Float(a), Value::Float(b)) => Value::Bool(a <= b),
+                        (Value::Float(a), Value::Int(b))   => Value::Bool(a <= b as f64),
+                        (Value::Int(a), Value::Float(b))   => Value::Bool(a <= b as i64),
+                        _ => panic!("unexpected operand"),
+                    };
+
+                    self.value_stack.push(result)
+                }
+
+                OpCode::GtEq => {
+                    let a = self.value_stack.pop().unwrap();
+                    let b = self.value_stack.pop().unwrap();
+
+                    let result = match (b, a) {
+                        (Value::Int(a), Value::Int(b))     => Value::Bool(a >= b),
+                        (Value::Float(a), Value::Float(b)) => Value::Bool(a >= b),
+                        (Value::Float(a), Value::Int(b))   => Value::Bool(a >= b as f64),
+                        (Value::Int(a), Value::Float(b))   => Value::Bool(a >= b as i64),
+                        _ => panic!("unexpected operand"),
+                    };
+
+                    self.value_stack.push(result)
+                }
 
                 OpCode::Eq => {
                     let a = self.value_stack.pop().unwrap();
@@ -238,6 +299,10 @@ impl VirtualMachine {
                     pc = 0;
                     
                     continue
+                }
+                
+                OpCode::Print => {
+                    println!("{}", self.value_stack.pop().unwrap());
                 }
                 
                 _ => (),

@@ -357,6 +357,14 @@ impl Parser {
             Ok(Statement::Definition(Definition { t, name, right: None, position: self.traveler.current().position }))
         }
     }
+    
+    fn print(&mut self) -> ParserResult<Statement> {
+        self.traveler.next();
+        
+        let argument = Rc::new(self.expression()?);
+        
+        Ok(Statement::Print(argument))
+    }
 
     fn statement(&mut self) -> ParserResult<Statement> {
         self.skip_whitespace()?;
@@ -382,6 +390,7 @@ impl Parser {
                 }
             },
             TokenType::Keyword => match self.traveler.current_content().as_str() {
+                "print" => self.print(),
                 _ => Ok(Statement::Expression(Rc::new(self.expression()?))),
             },
             _ => Ok(Statement::Expression(Rc::new(self.expression()?))),

@@ -59,6 +59,7 @@ pub enum Statement {
     Expression(Rc<Expression>),
     Assignment(Assignment),
     Definition(Definition),
+    Print(Rc<Expression>),
 }
 
 #[derive(Debug, Clone, PartialEq)]

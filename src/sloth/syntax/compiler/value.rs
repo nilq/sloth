@@ -1,6 +1,7 @@
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::rc::Rc;
+use std::fmt::*;
 
 use super::*;
 
@@ -63,5 +64,26 @@ impl Hash for Value {
 impl Value {
     pub fn truthy(self) -> bool {
         self != Value::Null && self != Value::Bool(false)
+    }
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match *self {
+            Value::Null          => write!(f, "null")?,
+            Value::Bool(b)       => write!(f, "{}", b)?,
+            Value::Int(n)        => write!(f, "{}", n)?,
+            Value::Float(n)      => write!(f, "{}", n)?,
+            Value::Char(n)       => write!(f, "{}", n)?,
+            Value::HeapObject(p) => {
+                let obj = unsafe { &*p };
+                match obj.kind {
+                    HeapKind::Str(ref s)         => write!(f, "{}", s)?,
+                    HeapKind::Function(_) => write!(f, "lambda<{:#?}>", p)?,
+                }
+            }
+        }
+
+        Ok(())
     }
 }
