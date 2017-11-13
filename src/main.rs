@@ -8,8 +8,15 @@ use sloth::*;
 
 fn main() {
     let test = r#"
-a := 1 + 3
-print a
+hmm := {
+  |n| n
+}    
+
+fib := {
+  |n| n
+}
+
+print hmm fib 10
     "#;
 
     let lexer = lexer(&mut test.chars());

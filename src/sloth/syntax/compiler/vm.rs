@@ -1,6 +1,5 @@
 use std::mem;
 use std::ptr;
-use std::rc::Rc;
 
 use super::*;
 
@@ -19,9 +18,10 @@ pub enum OpCode {
     Mul,
     Rem,
     Div,
-    
+    Pow,
+
     Neg,
-    
+
     Lt,
     Gt,
     LtEq,
@@ -58,12 +58,12 @@ impl VirtualMachine {
             next_object: ptr::null_mut(),
         }
     }
-    
+
     pub fn execute(&mut self, initial_block: *const CompiledBlock) {
         let mut pc = 0;
         let mut func = unsafe {&*initial_block};
         let mut locals = vec![Value::Null; func.locals.len()].into_boxed_slice();
-        
+
         macro_rules! match_binop {
             ($($pat:pat => $block:block)+) => {{
                 let _a = self.value_stack.pop().unwrap();
@@ -77,28 +77,26 @@ impl VirtualMachine {
                 self.value_stack.push(_result);
             }}
         }
-        
+
         loop {
             if pc >= func.code.len() {
                 break
             }
 
             let op = func.code[pc];
-            
-            println!("{:?}", op);
 
             match op {
                 OpCode::LoadConst(i)  => { self.value_stack.push(func.consts[i as usize]); },
                 OpCode::LoadLocal(i)  => { self.value_stack.push(locals[i as usize]); },
                 OpCode::StoreLocal(i) => locals[i as usize] = self.value_stack.pop().unwrap(),
-                
+
                 OpCode::BranchTrue(d) => {
                     if self.value_stack.pop().unwrap().truthy() {
                         pc = pc.wrapping_add((d as isize) as usize)
                     } else {
                         pc = pc.wrapping_add(1)
                     }
-                    
+
                     continue
                 }
 
@@ -168,6 +166,19 @@ impl VirtualMachine {
                         (Value::Int(a), Value::Int(b))     => Value::Int(a / b),
                         (Value::Float(a), Value::Float(b)) => Value::Float(a / b),
                         (Value::Float(a), Value::Int(b))   => Value::Float(a / b as f64),
+                        _ => panic!("unexpected operand"),
+                    };
+
+                    self.value_stack.push(result)
+                }
+
+                OpCode::Pow => {
+                    let a = self.value_stack.pop().unwrap();
+                    let b = self.value_stack.pop().unwrap();
+
+                    let result = match (b, a) {
+                        (Value::Float(a), Value::Float(b)) => Value::Float(a.powf(b)),
+                        (Value::Float(a), Value::Int(b))   => Value::Float(a.powf(b as f64)),
                         _ => panic!("unexpected operand"),
                     };
 
@@ -257,18 +268,18 @@ impl VirtualMachine {
                         panic!("unexpected operand type");
                     }
                 }
-                
-                OpCode::Call(args) => {
+
+                OpCode::Call(args) => {                    
                     let args = args as usize;
-                    
+
                     let func_i = self.value_stack.len() - args - 1;
                     let func_v = self.value_stack[func_i];
-                    
+
                     let old_func = func;
-                    
+
                     func = if let Value::HeapObject(p) = func_v {
                         let obj = unsafe {&*p};
-                        
+
                         if let HeapKind::Function(ref func) = obj.kind {
                             func
                         } else {
@@ -277,9 +288,9 @@ impl VirtualMachine {
                     } else {
                         panic!("calling non-func: {:#?}", func_v)
                     };
-                    
+
                     let mut new_locals = vec![Value::Null; func.locals.len()].into_boxed_slice();
-                    
+
                     for i in 0 .. args {
                         new_locals[i] = self.value_stack[func_i + 1 + i]
                     }
@@ -318,7 +329,7 @@ impl VirtualMachine {
             marked: false,
             kind,
         }));
-        
+
         self.next_object = obj;
 
         Value::HeapObject(obj)

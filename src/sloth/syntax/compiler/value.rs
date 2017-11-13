@@ -5,11 +5,13 @@ use std::fmt::*;
 
 use super::*;
 
+#[derive(Debug, Clone)]
 pub enum HeapKind {
     Str(Rc<String>),
     Function(CompiledBlock),
 }
 
+#[derive(Debug, Clone)]
 pub struct HeapObject {
     pub next:   *mut HeapObject,
     pub marked: bool,

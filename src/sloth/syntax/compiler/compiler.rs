@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::mem;
-
+use std::rc::Rc;
 use std::collections::hash_map::Entry;
 
 use super::*;
@@ -68,7 +68,7 @@ impl Compiler {
     
     fn emit_load_const(&mut self, value: Value) -> CompileResult<()> {
         let i = self.consts.len();
-        
+
         if i > (u16::max_value() as usize) {
             Err(CompileError::new(&format!("constant overflow: {}", u16::max_value())))
         } else {
@@ -126,7 +126,7 @@ impl Compiler {
 
     fn compile_statement(&mut self, s: &Statement) -> CompileResult<()> {
         match *s {
-            Statement::Definition(ref def) => {
+            Statement::Definition(ref def) => {                
                 let id = match *def.name {
                     Expression::Identifier(ref i, _) => i,
                     _                                => unreachable!(),
@@ -134,8 +134,9 @@ impl Compiler {
 
                 match def.right {
                     Some(ref e) => {
-                        self.compile_expression(&e)?;
                         let i = self.declare_local(id)?;
+
+                        self.compile_expression(&e)?;
                         self.emit(OpCode::StoreLocal(i))
                     },
                     None    => { self.declare_local(id)?; },
@@ -163,15 +164,9 @@ impl Compiler {
 
                 Ok(())
             },
-            
-            Statement::Print(ref e) => {
-                self.compile_expression(e)?;
-                self.emit(OpCode::Print);
-                Ok(())
-            }
         }
     }
-    
+
     fn compile_expression(&mut self, e: &Expression) -> CompileResult<()> {
         match *e {
             Expression::Int(ref n)   => self.emit_load_const(Value::Int(*n)),
@@ -182,12 +177,14 @@ impl Compiler {
                 let value = self.vm.allocate_object(HeapKind::Str((*n).clone()));
                 self.emit_load_const(value)
             },
+
             Expression::Identifier(ref id, _) => {
                 let i = self.fetch_local(id)?;
+
                 self.emit(OpCode::LoadLocal(i));
                 Ok(())
             },
-            
+
             Expression::Block(ref statements) => {
                 for s in statements {
                     self.compile_statement(s)?;
@@ -195,6 +192,74 @@ impl Compiler {
                 Ok(())
             },
             
+            Expression::Print(ref e) => {
+                self.compile_expression(e)?;
+                self.emit(OpCode::Print);
+                self.emit_load_const(Value::Null)?;
+
+                Ok(())
+            }
+
+            Expression::Arm(ref arm) => {
+                let cond = Expression::Operation(
+                    Operation {
+                        left:     Rc::new(Expression::Int(0)),
+                        right:    Rc::new(Expression::Int(0)),
+                        op:       Operand::Equal,
+                        position: arm.position.clone(),
+                    }
+                );
+
+                self.compile_expression(&cond)?;
+
+                let if_not = self.emit_branch_false();
+
+                let arm_block: CompiledBlock = {
+                    let mut locals = HashMap::<String, u16>::new();
+
+                    for (arg, i) in self.locals.clone() {
+                        locals.insert(arg, i);
+                    }
+
+                    let mut i = 0u16;
+                    for p in arm.params.iter() {
+                        match **p {
+                            Expression::Identifier(ref id, _) => {
+                                locals.insert((**id).clone(), i);
+                            },
+
+                            _ => {
+                                locals.insert("".to_string(), i);
+                            },
+                        }
+
+                        i += 1
+                    }
+
+                    let mut compiler = Compiler {
+                        vm:     self.vm.clone(),
+                        locals,
+                        code:   Vec::new(),
+                        consts: Vec::new(),
+                    };
+
+                    compiler.compile_main(&arm.body)?
+                };
+
+                let arm_func = self.vm.allocate_object(HeapKind::Function(arm_block));
+                self.emit_load_const(arm_func)?;
+
+                self.patch_jump(if_not)
+            },
+
+            Expression::Function(ref function) => {
+                for arm in function.arms.iter() {
+                    self.compile_expression(arm)?
+                }
+
+                Ok(())
+            },
+
             Expression::Operation(ref operation) => {
                 self.compile_expression(&operation.left)?;
                 self.compile_expression(&operation.right)?;
@@ -205,6 +270,7 @@ impl Compiler {
                     Operand::Mul     => self.emit(OpCode::Mul),
                     Operand::Div     => self.emit(OpCode::Div),
                     Operand::Mod     => self.emit(OpCode::Rem),
+                    Operand::Pow     => self.emit(OpCode::Pow),
 
                     Operand::Lt      => self.emit(OpCode::Lt),
                     Operand::Gt      => self.emit(OpCode::Gt),
@@ -212,9 +278,22 @@ impl Compiler {
                     Operand::GtEqual => self.emit(OpCode::GtEq),
                     Operand::Equal   => self.emit(OpCode::Eq),
                     Operand::NEqual  => self.emit(OpCode::NotEq),
-                    _                => (),
                 }
                 
+                Ok(())
+            },
+            
+            Expression::Call(ref call) => {
+                self.vm.value_stack.push(Value::Int(call.args.len() as i64)); // grr hack
+
+                self.compile_expression(&call.callee)?;
+
+                for arg in call.args.iter() {
+                    self.compile_expression(&arg)?
+                }
+
+                self.emit(OpCode::Call(call.args.len() as u8));
+
                 Ok(())
             },
 

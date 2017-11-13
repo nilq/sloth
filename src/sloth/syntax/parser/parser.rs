@@ -303,6 +303,7 @@ impl Parser {
             },
 
             TokenType::Keyword => match self.traveler.current_content().as_str() {
+                "print" => self.print(),
                 _ => Err(ParserError::new_pos(self.traveler.current().position, &format!("unexpected keyword: {}", self.traveler.current_content()))),
             },
 
@@ -358,12 +359,12 @@ impl Parser {
         }
     }
     
-    fn print(&mut self) -> ParserResult<Statement> {
+    fn print(&mut self) -> ParserResult<Expression> {
         self.traveler.next();
         
         let argument = Rc::new(self.expression()?);
         
-        Ok(Statement::Print(argument))
+        Ok(Expression::Print(argument))
     }
 
     fn statement(&mut self) -> ParserResult<Statement> {
@@ -390,7 +391,6 @@ impl Parser {
                 }
             },
             TokenType::Keyword => match self.traveler.current_content().as_str() {
-                "print" => self.print(),
                 _ => Ok(Statement::Expression(Rc::new(self.expression()?))),
             },
             _ => Ok(Statement::Expression(Rc::new(self.expression()?))),

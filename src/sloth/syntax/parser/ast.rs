@@ -16,6 +16,7 @@ pub enum Expression {
     Index(Index),
     Function(Function),
     Arm(Arm),
+    Print(Rc<Expression>),
     EOF,
 }
 
@@ -29,8 +30,8 @@ pub struct Operation {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Call {
-    pub callee: Rc<Expression>,
-    pub args:   Vec<Rc<Expression>>,
+    pub callee:   Rc<Expression>,
+    pub args:     Vec<Rc<Expression>>,
     pub position: TokenPosition,
 }
 
@@ -59,7 +60,6 @@ pub enum Statement {
     Expression(Rc<Expression>),
     Assignment(Assignment),
     Definition(Definition),
-    Print(Rc<Expression>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
